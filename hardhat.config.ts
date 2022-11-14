@@ -3,6 +3,11 @@ import "@nomicfoundation/hardhat-toolbox";
 
 const config: HardhatUserConfig = {
   solidity: "0.7.5",
+  networks: {
+    hardhat: {
+      allowUnlimitedContractSize: true
+    },
+  }
 };
 
 export default config;
