@@ -101,6 +101,15 @@ const eip712Domain = {
         { name: 'verifyingContract', type: 'address' }
     ]
 }
+export const randomUint = () => {
+    return Math.floor(Math.random() * 1e10)
+}
+
+export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
+export const ZERO_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000'
+export const NULL_SIG = {v: 27, r: ZERO_BYTES32, s: ZERO_BYTES32}
+export const CHAIN_ID = 50
+
 export const wrap = (inst) => {
     const obj = {
         inst: inst,
