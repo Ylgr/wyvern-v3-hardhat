@@ -22,6 +22,14 @@ describe("WyvernExchange", () => {
 
     describe("atomicMatch", () => {
       it("matches two nft + erc20 orders", async () => {
+          // Pre-check asset
+          const nftBefore = await erc721.balanceOf(accounts[0].address)
+          expect(nftBefore.toString()).to.be.equal('3')
+          const nftBefore6 = await erc721.balanceOf(accounts[6].address)
+          expect(nftBefore6.toString()).to.be.equal('0')
+          const nftBefore2 = await erc721.balanceOf(accounts[2].address)
+          expect(nftBefore2.toString()).to.be.equal('0')
+
           await registry.registerProxy()
           let proxy = await registry.proxies(accounts[0].address)
           await erc20.approve(proxy, 100000)
@@ -29,7 +37,8 @@ describe("WyvernExchange", () => {
 
           const amount = randomUint() + 2
           await erc20.mint(accounts[0].address,amount)
-            console.log('1')
+
+          console.log('1')
           const selector = statici.interface.getSighash('any')
           console.log('2')
 
@@ -66,6 +75,14 @@ describe("WyvernExchange", () => {
           console.log('5')
           await exchange.atomicMatch(one, sig, firstCall, two, sig, secondCall, ZERO_BYTES32)
 
+          // After execute asset
+
+          const nftAfter = await erc721.balanceOf(accounts[0].address)
+          expect(nftAfter.toString()).to.be.equal('1')
+          const nftAfter6 = await erc721.balanceOf(accounts[6].address)
+          expect(nftAfter6.toString()).to.be.equal('1')
+          const nftAfter2 = await erc721.balanceOf(accounts[2].address)
+          expect(nftAfter2.toString()).to.be.equal('1')
       })
     })
 })
