@@ -22,6 +22,11 @@ describe("WyvernExchange", () => {
 
     describe("atomicMatch", () => {
       it("matches two nft + erc20 orders", async () => {
+          await registry.registerProxy()
+          let proxy = await registry.proxies(accounts[0].address)
+          await erc20.approve(proxy, 100000)
+          await erc721.setApprovalForAll(proxy, true)
+
           const amount = randomUint() + 2
           await erc20.mint(accounts[0].address,amount)
             console.log('1')

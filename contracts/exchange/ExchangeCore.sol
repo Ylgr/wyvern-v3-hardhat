@@ -14,6 +14,7 @@ import "../lib/EIP712.sol";
 import "../lib/EIP1271.sol";
 import "../registry/ProxyRegistryInterface.sol";
 import "../registry/AuthenticatedProxy.sol";
+import "hardhat/console.sol";
 
 /**
  * @title ExchangeCore
