@@ -19,7 +19,8 @@ describe("WyvernExchange", () => {
         accounts = await ethers.getSigners();
 
     })
-
+    const abi = [{'constant': false, 'inputs': [{'name': 'addrs', 'type': 'address[]'}, {'name': 'values', 'type': 'uint256[]'}, {'name': 'calldataLengths', 'type': 'uint256[]'}, {'name': 'calldatas', 'type': 'bytes'}], 'name': 'atomicize', 'outputs': [], 'payable': false, 'stateMutability': 'nonpayable', 'type': 'function'}]
+    const atomicizerInterface = new ethers.utils.Interface(abi)
     describe("atomicMatch", () => {
       it("matches two nft + erc20 orders", async () => {
           // Pre-check asset
@@ -50,9 +51,6 @@ describe("WyvernExchange", () => {
           const sig = NULL_SIG
 
           console.log('3')
-          const abi = [{'constant': false, 'inputs': [{'name': 'addrs', 'type': 'address[]'}, {'name': 'values', 'type': 'uint256[]'}, {'name': 'calldataLengths', 'type': 'uint256[]'}, {'name': 'calldatas', 'type': 'bytes'}], 'name': 'atomicize', 'outputs': [], 'payable': false, 'stateMutability': 'nonpayable', 'type': 'function'}]
-
-          const atomicizerInterface = new ethers.utils.Interface(abi)
 
           const firstERC20Call = erc20.interface.encodeFunctionData('transferFrom', [accounts[0].address, accounts[6].address, 2])
           const firstERC721Call = erc721.interface.encodeFunctionData('transferFrom', [accounts[0].address, accounts[6].address, nfts[0]])
@@ -91,7 +89,80 @@ describe("WyvernExchange", () => {
           expect(erc20After2.toString()).to.be.equal((2).toString())
           const erc20After6 = await erc20.balanceOf(accounts[6].address)
           expect(erc20After6.toString()).to.be.equal((2).toString())
-
       })
+
+        it('matches two nft + erc20 orders, real static call', async () => {
+            await registry.registerProxy()
+            let proxy = await registry.proxies(accounts[0].address)
+            await erc20.approve(proxy, 100000)
+            await erc721.setApprovalForAll(proxy, true)
+            await registry.connect(accounts[6]).registerProxy()
+            let proxy6 = await registry.connect(accounts[6]).proxies(accounts[6].address)
+            await erc20.connect(accounts[6]).approve(proxy6, 100000)
+            await erc721.connect(accounts[6]).setApprovalForAll(proxy6, true)
+
+            const amount = randomUint() + 2
+            await erc20.mint(accounts[0].address,amount)
+            await erc721.transferFrom(accounts[0].address, accounts[6].address, nfts[0])
+            const selectorOne = statici.interface.getSighash('split')
+            const selectorOneA = statici.interface.getSighash('sequenceExact')
+            const selectorOneB = statici.interface.getSighash('sequenceExact')
+            const firstEDSelector = statici.interface.getSighash('transferERC20Exact')
+            const firstEDParams = statici.interface._abiCoder.encode(['address', 'uint256'], [erc20.address, '2'])
+            const secondEDSelector = statici.interface.getSighash('transferERC721Exact')
+            const secondEDParams = statici.interface._abiCoder.encode(['address', 'uint256'], [erc721.address, nfts[2]])
+            const extradataOneA = statici.interface._abiCoder.encode(
+                ['address[]', 'uint256[]', 'bytes4[]', 'bytes'],
+                [[statici.address, statici.address],
+                    [(firstEDParams.length - 2) / 2, (secondEDParams.length - 2) / 2],
+                    [firstEDSelector, secondEDSelector],
+                    firstEDParams + secondEDParams.slice(2)]
+            )
+            const bEDParams = statici.interface._abiCoder.encode(['address', 'uint256'], [erc721.address, nfts[0]])
+            const bEDSelector = statici.interface.getSighash('transferERC721Exact')
+            const extradataOneB = statici.interface._abiCoder.encode(
+                ['address[]', 'uint256[]', 'bytes4[]', 'bytes'],
+                [[statici.address], [(bEDParams.length - 2) / 2], [bEDSelector], bEDParams]
+            )
+            const paramsOneA = statici.interface._abiCoder.encode(
+                ['address[2]', 'bytes4[2]', 'bytes', 'bytes'],
+                [[statici.address, statici.address],
+                    [selectorOneA, selectorOneB],
+                    extradataOneA, extradataOneB]
+            )
+            const extradataOne = paramsOneA
+            const selectorTwo = statici.interface.getSighash('any')
+            const extradataTwo = '0x'
+            const one = {registry: registry.address, maker: accounts[0].address, staticTarget: statici.address, staticSelector: selectorOne, staticExtradata: extradataOne, maximumFill: '1', listingTime: '0', expirationTime: '10000000000', salt: '3352'}
+            const two = {registry: registry.address, maker: accounts[6].address, staticTarget: statici.address, staticSelector: selectorTwo, staticExtradata: extradataTwo, maximumFill: '1', listingTime: '0', expirationTime: '10000000000', salt: '3335'}
+            const sig = NULL_SIG
+            const firstERC20Call = erc20.interface.encodeFunctionData('transferFrom', [accounts[0].address, accounts[6].address, 2])
+            const firstERC721Call = erc721.interface.encodeFunctionData('transferFrom', [accounts[0].address, accounts[6].address, nfts[2]])
+            const firstData = atomicizerInterface.encodeFunctionData('atomicize',[
+                [erc20.address, erc721.address],
+                [0, 0],
+                [(firstERC20Call.length - 2) / 2, (firstERC721Call.length - 2) / 2],
+                firstERC20Call + firstERC721Call.slice(2)
+            ])
+
+            const secondERC721Call = erc721.interface.encodeFunctionData('transferFrom', [accounts[6].address, accounts[0].address, nfts[0]])
+            const secondData = atomicizerInterface.encodeFunctionData('atomicize',[
+                [erc721.address],
+                [0],
+                [(secondERC721Call.length - 2) / 2],
+                secondERC721Call
+            ])
+
+            const firstCall = {target: atomicizer.address, howToCall: 1, data: firstData}
+            const secondCall = {target: atomicizer.address, howToCall: 1, data: secondData}
+            console.log('1')
+            let twoSig = await exchange.sign(two, accounts[6])
+            console.log('2')
+
+            await exchange.atomicMatch(one, sig, firstCall, two, twoSig, secondCall, ZERO_BYTES32)
+
+
+            expect((await erc20.balanceOf(accounts[6].address)).toString()).to.be.equal('2')
+        })
     })
 })

@@ -154,17 +154,9 @@ export const wrap = (inst) => {
         const str = structToSign(order, inst.address)
         return account._signTypedData(
             str.domain,
-            eip712Domain.fields,
+            {[eip712Order.name]: eip712Order.fields},
             order
-        ).si(account, {
-            types: {
-                EIP712Domain: eip712Domain.fields,
-                Order: eip712Order.fields
-            },
-            domain: str.domain,
-            primaryType: 'Order',
-            message: order
-        }).then(sigBytes => {
+        ).then(sigBytes => {
             return parseSig(sigBytes)
         })
     }
