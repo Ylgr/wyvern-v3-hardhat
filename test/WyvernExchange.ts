@@ -38,6 +38,9 @@ describe("WyvernExchange", () => {
           const amount = randomUint() + 2
           await erc20.mint(accounts[0].address,amount)
 
+          const erc20Before = await erc20.balanceOf(accounts[0].address)
+          expect(erc20Before.toString()).to.be.equal(amount.toString())
+
           console.log('1')
           const selector = statici.interface.getSighash('any')
           console.log('2')
@@ -76,13 +79,19 @@ describe("WyvernExchange", () => {
           await exchange.atomicMatch(one, sig, firstCall, two, sig, secondCall, ZERO_BYTES32)
 
           // After execute asset
-
           const nftAfter = await erc721.balanceOf(accounts[0].address)
           expect(nftAfter.toString()).to.be.equal('1')
           const nftAfter6 = await erc721.balanceOf(accounts[6].address)
           expect(nftAfter6.toString()).to.be.equal('1')
           const nftAfter2 = await erc721.balanceOf(accounts[2].address)
           expect(nftAfter2.toString()).to.be.equal('1')
+          const erc20After = await erc20.balanceOf(accounts[0].address)
+          expect(erc20After.toString()).to.be.equal((amount-4).toString())
+          const erc20After2 = await erc20.balanceOf(accounts[2].address)
+          expect(erc20After2.toString()).to.be.equal((2).toString())
+          const erc20After6 = await erc20.balanceOf(accounts[6].address)
+          expect(erc20After6.toString()).to.be.equal((2).toString())
+
       })
     })
 })
